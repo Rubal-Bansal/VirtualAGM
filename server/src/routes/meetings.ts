@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { meetingManager } from '../meeting/MeetingManager';
 import { inviteManager } from '../invite/InviteManager';
 import { env } from '../config/env';
+import { requireAuth, wrap } from '../auth/auth';
 
 export const meetingsRouter = Router();
 
@@ -13,18 +14,18 @@ function participantJoinUrl(token: string): string {
   return `${env.clientOrigin}/join/${token}`;
 }
 
-meetingsRouter.get('/', (_req, res) => {
-  res.json(meetingManager.listMeetings());
+meetingsRouter.get('/', requireAuth, (req, res) => {
+  res.json(meetingManager.listMeetings(req.user!.id));
 });
 
-meetingsRouter.post('/', async (req, res) => {
+meetingsRouter.post('/', requireAuth, wrap(async (req, res) => {
   const { companyName, title, hostName, scheduledAt, logoUrl, waitingVideoUrl, tagline } = req.body ?? {};
   if (!companyName || !title) {
     res.status(400).json({ error: 'companyName and title are required' });
     return;
   }
   const scheduledAtMs = scheduledAt ? new Date(scheduledAt).getTime() : undefined;
-  const meeting = await meetingManager.createMeeting(String(companyName), String(title), {
+  const meeting = await meetingManager.createMeeting(req.user!.id, String(companyName), String(title), {
     scheduledAt: Number.isFinite(scheduledAtMs) ? scheduledAtMs : undefined,
     logoUrl: logoUrl ? String(logoUrl) : undefined,
     waitingVideoUrl: waitingVideoUrl ? String(waitingVideoUrl) : undefined,
@@ -44,7 +45,7 @@ meetingsRouter.post('/', async (req, res) => {
     hostJoinUrl: hostJoinUrl(hostInvite.token),
     participantJoinUrl: participantJoinUrl(meeting.participantJoinToken),
   });
-});
+}));
 
 meetingsRouter.get('/:id', (req, res) => {
   const meeting = meetingManager.getMeeting(req.params.id);
@@ -66,7 +67,11 @@ meetingsRouter.get('/:id', (req, res) => {
   });
 });
 
-meetingsRouter.delete('/:id', (req, res) => {
+meetingsRouter.delete('/:id', requireAuth, (req, res) => {
+  if (meetingManager.getOwnerId(req.params.id) !== req.user!.id) {
+    res.status(403).json({ error: 'Only the meeting owner can end it' });
+    return;
+  }
   meetingManager.endMeeting(req.params.id);
   res.status(204).send();
 });

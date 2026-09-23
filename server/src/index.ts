@@ -3,6 +3,7 @@ import cors from 'cors';
 import http from 'http';
 import { Server } from 'socket.io';
 import { env } from './config/env';
+import { authRouter } from './auth/auth';
 import { initDb } from './db/db';
 import { inviteManager } from './invite/InviteManager';
 import { meetingManager } from './meeting/MeetingManager';
@@ -22,6 +23,7 @@ async function main() {
   app.use(express.json());
 
   app.get('/health', (_req, res) => res.json({ ok: true }));
+  app.use('/api/auth', authRouter);
   app.use('/api/meetings', meetingsRouter);
 
   const httpServer = http.createServer(app);

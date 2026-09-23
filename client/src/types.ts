@@ -57,3 +57,9 @@ export interface RemoteProducerRef {
   kind: 'audio' | 'video';
   source: MediaSource;
 }
+
+export interface AuthUser {
+  id: string;
+  name: string;
+  email: string;
+}

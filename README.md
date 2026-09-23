@@ -144,7 +144,12 @@ npm install
 npm run dev         # http://localhost:5173
 ```
 
-Open http://localhost:5173 → **Create meeting**. You'll land on the admin
+The server needs PostgreSQL: set `DATABASE_URL` and `JWT_SECRET` in
+`server/.env` (see `.env.example`). Tables are created automatically on
+startup. Organisers sign up / sign in at http://localhost:5173/login; joining
+a meeting via a host or speaker link needs no account.
+
+Open http://localhost:5173 → sign up → **Create event**. You'll land on the admin
 dashboard for that meeting:
 - Click **Enter meeting as host** to join as the admin, in this or another
   tab/browser.

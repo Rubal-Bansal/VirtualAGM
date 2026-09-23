@@ -8,14 +8,20 @@ const ms = (d: Date | null): number | undefined => (d ? d.getTime() : undefined)
 class MeetingManager {
   private meetings = new Map<string, Meeting>();
   private participantTokenIndex = new Map<string, string>();
+  private owners = new Map<string, string | null>();
 
-  async createMeeting(companyName: string, title: string, branding: MeetingBranding = {}): Promise<Meeting> {
+  async createMeeting(
+    ownerId: string,
+    companyName: string,
+    title: string,
+    branding: MeetingBranding = {},
+  ): Promise<Meeting> {
     const id = randomUUID();
     const meeting = await Meeting.create(id, companyName, title, branding);
     await pool.query(
       `INSERT INTO meetings (id, company_name, title, status, participant_join_token, created_at,
-                             scheduled_at, logo_url, waiting_video_url, tagline)
-       VALUES ($1, $2, $3, $4, $5, to_timestamp($6 / 1000.0), $7, $8, $9, $10)`,
+                             scheduled_at, logo_url, waiting_video_url, tagline, owner_id)
+       VALUES ($1, $2, $3, $4, $5, to_timestamp($6 / 1000.0), $7, $8, $9, $10, $11)`,
       [
         id,
         companyName,
@@ -27,9 +33,11 @@ class MeetingManager {
         branding.logoUrl ?? null,
         branding.waitingVideoUrl ?? null,
         branding.tagline ?? null,
+        ownerId,
       ],
     );
     this.meetings.set(id, meeting);
+    this.owners.set(id, ownerId);
     this.participantTokenIndex.set(meeting.participantJoinToken, id);
     return meeting;
   }
@@ -56,6 +64,7 @@ class MeetingManager {
         },
       );
       this.meetings.set(r.id, meeting);
+      this.owners.set(r.id, r.owner_id ?? null);
       this.participantTokenIndex.set(meeting.participantJoinToken, r.id);
     }
     // Close attendance rows that were left open by the previous process.
@@ -72,19 +81,25 @@ class MeetingManager {
     return this.participantTokenIndex.get(token);
   }
 
-  listMeetings(): MeetingSummary[] {
-    return Array.from(this.meetings.values()).map((m) => ({
-      id: m.id,
-      companyName: m.companyName,
-      title: m.title,
-      status: m.status,
-      participantCount: m.listParticipants().length,
-      createdAt: m.createdAt,
-      scheduledAt: m.scheduledAt,
-      logoUrl: m.logoUrl,
-      waitingVideoUrl: m.waitingVideoUrl,
-      tagline: m.tagline,
-    }));
+  getOwnerId(id: string): string | null | undefined {
+    return this.owners.get(id);
+  }
+
+  listMeetings(ownerId: string): MeetingSummary[] {
+    return Array.from(this.meetings.values())
+      .filter((m) => this.owners.get(m.id) === ownerId)
+      .map((m) => ({
+        id: m.id,
+        companyName: m.companyName,
+        title: m.title,
+        status: m.status,
+        participantCount: m.listParticipants().length,
+        createdAt: m.createdAt,
+        scheduledAt: m.scheduledAt,
+        logoUrl: m.logoUrl,
+        waitingVideoUrl: m.waitingVideoUrl,
+        tagline: m.tagline,
+      }));
   }
 
   endMeeting(id: string): void {
@@ -93,6 +108,7 @@ class MeetingManager {
     this.participantTokenIndex.delete(meeting.participantJoinToken);
     meeting.end();
     this.meetings.delete(id);
+    this.owners.delete(id);
     persist('meeting end', pool.query("UPDATE meetings SET status = 'ENDED', ended_at = now() WHERE id = $1", [id]));
   }
 }

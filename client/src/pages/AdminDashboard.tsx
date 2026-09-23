@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { AppShell } from '../components/AppShell';
 import { getMeeting } from '../lib/api';
 import { CreatedMeeting, ParticipantInfo } from '../types';
 
@@ -38,6 +39,7 @@ export function AdminDashboard() {
   const [loadError, setLoadError] = useState<string>();
   const [participants, setParticipants] = useState<ParticipantInfo[]>([]);
   const [copied, setCopied] = useState(false);
+  const [status, setStatus] = useState<string>();
 
   useEffect(() => {
     if (!meetingId) return;
@@ -63,6 +65,7 @@ export function AdminDashboard() {
       .then((m) => {
         setCompanyName(m.companyName);
         setTitle(m.title);
+        setStatus(m.status);
         setParticipantJoinUrl(m.participantJoinUrl);
         setParticipants(m.participants);
       })
@@ -82,47 +85,79 @@ export function AdminDashboard() {
 
   if (!meetingId) return null;
 
+  const initials = (name: string) =>
+    name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((w) => w[0].toUpperCase())
+      .join('');
+
   return (
-    <div className="page">
-      <h1>{companyName || 'Meeting'} — Admin</h1>
-      <p className="muted">{title}</p>
+    <AppShell>
+      <div className="admin-wrap">
+        <button type="button" className="link-back" onClick={() => navigate('/')}>
+          ← Back to events
+        </button>
 
-      {hostToken ? (
-        <button onClick={() => navigate(`/room/${hostToken}`)}>Enter meeting as host</button>
-      ) : (
-        <p className="error">{loadError}</p>
-      )}
-
-      <section className="card" style={{ marginTop: 24 }}>
-        <h2>Speaker join link</h2>
-        <p className="muted">
-          Share this one link with every shareholder joining as a speaker. Anyone with the link enters their name
-          (and optional designation) when they join — no pre-registration needed.
-        </p>
-        {participantJoinUrl && (
-          <div className="speaker-row">
-            <input value={participantJoinUrl} readOnly />
-            <button type="button" onClick={copyLink}>
-              {copied ? 'Copied!' : 'Copy link'}
-            </button>
+        <header className="admin-head">
+          <div>
+            <span className={`admin-status admin-status-${(status ?? 'SCHEDULED').toLowerCase()}`}>
+              {status ?? 'SCHEDULED'}
+            </span>
+            <h1>{companyName || 'Meeting'}</h1>
+            <p>{title}</p>
           </div>
-        )}
-      </section>
+          {hostToken ? (
+            <button className="btn btn-primary" onClick={() => navigate(`/room/${hostToken}`)}>
+              Enter meeting as host
+            </button>
+          ) : (
+            <p className="form-error">{loadError}</p>
+          )}
+        </header>
 
-      <section className="participants" style={{ marginTop: 24 }}>
-        <h2>Currently in meeting ({participants.length})</h2>
-        <ul>
-          {participants.map((p) => (
-            <li key={p.id}>
-              <span>
-                {p.name}
-                {p.designation ? ` (${p.designation})` : ''} — {p.role}
-              </span>
-            </li>
-          ))}
-          {participants.length === 0 && <p className="muted">Nobody has joined yet.</p>}
-        </ul>
-      </section>
-    </div>
+        <div className="admin-grid">
+          <section className="admin-card">
+            <h2>Speaker join link</h2>
+            <p className="admin-muted">
+              Share this one link with every shareholder joining as a speaker. Anyone with the link enters their
+              name (and optional designation) when they join — no pre-registration needed.
+            </p>
+            {participantJoinUrl && (
+              <div className="admin-link">
+                <input value={participantJoinUrl} readOnly onFocus={(e) => e.currentTarget.select()} />
+                <button type="button" onClick={copyLink}>
+                  {copied ? 'Copied ✓' : 'Copy link'}
+                </button>
+              </div>
+            )}
+          </section>
+
+          <section className="admin-card">
+            <div className="admin-card-head">
+              <h2>In the meeting</h2>
+              <span className="admin-count">{participants.length}</span>
+            </div>
+            {participants.length === 0 ? (
+              <p className="admin-muted">Nobody has joined yet.</p>
+            ) : (
+              <ul className="admin-people">
+                {participants.map((p) => (
+                  <li key={p.id}>
+                    <span className="admin-avatar">{initials(p.name)}</span>
+                    <div>
+                      <strong>{p.name}</strong>
+                      {p.designation && <span>{p.designation}</span>}
+                    </div>
+                    <span className={`admin-role admin-role-${p.role.toLowerCase()}`}>{p.role}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </div>
+      </div>
+    </AppShell>
   );
 }

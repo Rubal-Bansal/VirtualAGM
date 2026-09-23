@@ -7,6 +7,14 @@ pool.on('error', (err) => console.error('Postgres pool error', err));
 
 export async function initDb(): Promise<void> {
   await pool.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id            UUID PRIMARY KEY,
+      name          TEXT NOT NULL,
+      email         TEXT NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL,
+      created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
     CREATE TABLE IF NOT EXISTS meetings (
       id                     UUID PRIMARY KEY,
       company_name           TEXT NOT NULL,
@@ -20,6 +28,8 @@ export async function initDb(): Promise<void> {
       tagline                TEXT,
       ended_at               TIMESTAMPTZ
     );
+
+    ALTER TABLE meetings ADD COLUMN IF NOT EXISTS owner_id UUID REFERENCES users(id) ON DELETE SET NULL;
 
     CREATE TABLE IF NOT EXISTS invites (
       token       TEXT PRIMARY KEY,

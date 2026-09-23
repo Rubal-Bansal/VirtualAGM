@@ -13,6 +13,7 @@ function required(name: string, fallback?: string): string {
 export const env = {
   port: Number(process.env.PORT ?? 4000),
   databaseUrl: required('DATABASE_URL'),
+  jwtSecret: required('JWT_SECRET'),
   clientOrigin: required('CLIENT_ORIGIN', 'http://localhost:5173'),
   mediasoup: {
     announcedIp: required('MEDIASOUP_ANNOUNCED_IP', '127.0.0.1'),

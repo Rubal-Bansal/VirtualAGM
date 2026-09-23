@@ -21,22 +21,29 @@ export function JoinPage() {
   }
 
   return (
-    <div className="page">
-      <h1>Join meeting</h1>
-      <form className="card" onSubmit={handleSubmit}>
-        <label>
+    <div className="app app-center">
+      <form className="auth-card" onSubmit={handleSubmit}>
+        <span className="brand">
+          <span className="brand-mark">A</span>
+          Virtual AGM
+        </span>
+        <h2>Join meeting</h2>
+        <p className="muted">Enter your name to join as a speaker.</p>
+        <label className="field">
           Your name
-          <input value={name} onChange={(e) => setName(e.target.value)} required autoFocus />
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your full name" required autoFocus />
         </label>
-        <label>
-          Designation (optional)
+        <label className="field">
+          <span>Designation <span className="optional">(optional)</span></span>
           <input
             value={designation}
             onChange={(e) => setDesignation(e.target.value)}
             placeholder="e.g. Independent Director"
           />
         </label>
-        <button type="submit">Join meeting</button>
+        <button type="submit" className="btn btn-primary btn-block">
+          Join meeting
+        </button>
       </form>
     </div>
   );
